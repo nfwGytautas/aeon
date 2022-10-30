@@ -35,7 +35,7 @@ _start:
 	mov $stack_top, %esp
 	 
 	/* Initialize process state for the kernel, initialize C++ features here */
-
+	call _init /* Global constructors */
 
 	/* Environment initialized
 	 * GDT loaded
@@ -43,7 +43,6 @@ _start:
 	 * NOTE: Entering the kernel requires the stack to be 16 byte alligned
 	 */
   	call kernel_main
-
 
   	/* Kernel exit enter infinite loop */
   	cli /* Disable interrupts */
