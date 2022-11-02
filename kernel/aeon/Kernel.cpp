@@ -1,5 +1,5 @@
 #include <aeon/Terminal.h>
-#include <stdio.h>
+#include <libc/stdio.h>
 
 /* Kernel main needs to use C linkage */
 extern "C" {

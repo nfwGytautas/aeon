@@ -1,55 +1,64 @@
-PROJECTS=libc kernel
+# Helpers
+rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
+
+# Variables
+HOST=i686-elf
+ARCH_TRIPLET=i386
 
 CURRENT_DIR=$(shell pwd)
+OUT_DIR=$(CURRENT_DIR)/out/
+ARCH_DIR=arch/$(ARCH_TRIPLET)/
 
-HOST=i686-elf
-HOSTARCH=$(shell tools/target-triplet-to-arch.sh $(HOST))
+CC=${HOST}-gcc #--sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR)
+CFLAGS=-g -O2 -ffreestanding -Wall -Wextra
+CPPFLAGS=-Ikernel/include -D__AEON_LIBK
 
-MAKE="make"
+LD=${HOST}-ld
 
-# Configure the cross-compiler to use the desired system root.
-export SYSROOT="$(shell pwd)/sysroot"
+# Source files
+KERNEL_SOURCES=$(call rwildcard,kernel/,*.cpp)
 
-export AR=${HOST}-ar
-export AS=${HOST}-as
+ARCH_SOURCES=$(call rwildcard,$(ARCH_DIR),*.cpp)
+ARCH_SOURCES:=$(ARCH_SOURCES) $(call rwildcard,$(ARCH_DIR),*.s)
 
-export PREFIX=/usr
-export EXEC_PREFIX=$(PREFIX)
-export BOOTDIR=/boot
-export LIBDIR=$(EXEC_PREFIX)/lib
-export INCLUDEDIR="$(PREFIX)/include"
+# Create .o files from sources
+KERNEL_OBJS=$(KERNEL_SOURCES:.cpp=.o)
 
-export CC=${HOST}-gcc --sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR)
-export HOST
-export HOSTARCH
-export CFLAGS=-O2 -g
-export CPPFLAGS=
+ARCH_OBJS=$(ARCH_SOURCES:.cpp=.o)
+ARCH_OBJS:=$(ARCH_OBJS) $(ARCH_SOURCES:.s=.o)
+
+# Rules
+.PHONY: all run iso aeon clean
 
 all: aeon
 
 run: iso
-	qemu-system-$(HOSTARCH) -cdrom $(CURRENT_DIR)/aeon.iso
+	qemu-system-$(ARCH_TRIPLET) -cdrom $(OUT_DIR)/aeon.iso
 
 iso: aeon
-	mkdir -p $(CURRENT_DIR)/isodir
-	mkdir -p $(CURRENT_DIR)/isodir/boot
-	mkdir -p $(CURRENT_DIR)/isodir/boot/grub
-	cp $(CURRENT_DIR)/sysroot/boot/aeon.kernel $(CURRENT_DIR)/isodir/boot/aeon.kernel
+	mkdir -p $(OUT_DIR)/isodir
+	mkdir -p $(OUT_DIR)/isodir/boot
+	mkdir -p $(OUT_DIR)/isodir/boot/grub
+	cp $(OUT_DIR)/aeon.kernel $(OUT_DIR)/isodir/boot/aeon.kernel
 
-	@echo "menuentry \"aeon\" {multiboot /boot/aeon.kernel}" > $(CURRENT_DIR)/isodir/boot/grub/grub.cfg
+	@echo "menuentry \"aeon\" {multiboot /boot/aeon.kernel}" > $(OUT_DIR)/isodir/boot/grub/grub.cfg
 
-	grub2-mkrescue -o $(CURRENT_DIR)/aeon.iso $(CURRENT_DIR)/isodir
+	grub2-mkrescue -o $(OUT_DIR)/aeon.iso $(OUT_DIR)/isodir
 
-aeon: headers
-	for p in $(PROJECTS); do (cd $(CURRENT_DIR)/$$p && DESTDIR=$(SYSROOT) $(MAKE_ARGS) $(MAKE) install); done
-
-headers: $(PROJECTS)
-	mkdir -p $(SYSROOT)
-	for p in $(PROJECTS); do (cd $(CURRENT_DIR)/$$p && DESTDIR=$(SYSROOT) $(MAKE_ARGS) $(MAKE) install-headers); done
+aeon: $(KERNEL_OBJS) $(ARCH_OBJS) $(ARCH_DIR)/linker.ld
+	$(CC) -T $(ARCH_DIR)linker.ld -o $(OUT_DIR)/$@.kernel $(CFLAGS) -nostdlib -lgcc $(call rwildcard,$(OUT_DIR),*.o)
 
 clean:
-	for p in $(PROJECTS); do (cd $(CURRENT_DIR)/$$p && $(MAKE_ARGS) $(MAKE) clean); done
+	rm -rf $(OUT_DIR)
 
-	rm -rf sysroot
-	rm -rf isodir
-	rm -rf aeon.iso
+# Generic rule for code compilation
+$(ARCH_DIR)/crtbegin.o $(ARCH_DIR)/crtend.o:
+	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
+
+%.o: %.cpp
+	mkdir -p $(dir $(OUT_DIR)$@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $(OUT_DIR)$@
+
+%.o: %.s
+	mkdir -p $(dir $(OUT_DIR)$@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $(OUT_DIR)$@

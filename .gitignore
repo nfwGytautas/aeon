@@ -1,5 +1,2 @@
-compiler/
-
-*.iso
-isodir
-sysroot
+out/
+.idea/

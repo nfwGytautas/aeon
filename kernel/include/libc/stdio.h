@@ -1,7 +1,12 @@
+/**
+ * @file stdio.h
+ * @brief aeon implementation for stdio.h
+ * @author nfwGytautas
+ * @date 11/2/22
+ */
+
 #ifndef _STDIO_H
 #define _STDIO_H 1
-
-#include <sys/cdefs.h>
 
 #define EOF (-1)
 
@@ -18,3 +23,4 @@ int puts(const char*);
 #endif
 
 #endif
+

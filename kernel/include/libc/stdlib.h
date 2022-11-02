@@ -1,7 +1,12 @@
+/**
+ * @file stdlib.h
+ * @brief aeon implementation for stdlib.h
+ * @author nfwGytautas
+ * @date 11/2/22
+ */
+
 #ifndef _STDLIB_H
 #define _STDLIB_H 1
-
-#include <sys/cdefs.h>
 
 #ifdef __cplusplus
 extern "C" {

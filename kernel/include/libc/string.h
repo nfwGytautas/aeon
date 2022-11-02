@@ -1,7 +1,12 @@
+/**
+ * @file string.h
+ * @brief aeon implementation for string.h
+ * @author nfwGytautas
+ * @date 11/2/22
+ */
+
 #ifndef _STRING_H
 #define _STRING_H 1
-
-#include <sys/cdefs.h>
 
 #include <stddef.h>
 
