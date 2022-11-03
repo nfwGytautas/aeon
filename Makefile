@@ -7,28 +7,32 @@ ARCH_TRIPLET=i386
 
 CURRENT_DIR=$(shell pwd)
 OUT_DIR=$(CURRENT_DIR)/out/
-ARCH_DIR=arch/$(ARCH_TRIPLET)/
 
-CC=${HOST}-gcc #--sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR)
+CC=${HOST}-gcc --sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR)
 CFLAGS=-g -O2 -ffreestanding -Wall -Wextra
 CPPFLAGS=-Ikernel/include -D__AEON_LIBK
 
 LD=${HOST}-ld
 
 # Source files
-KERNEL_SOURCES=$(call rwildcard,kernel/,*.cpp)
+KERNEL_SOURCE_DIR=kernel/
+ARCH_SOURCE_DIR=arch/$(ARCH_TRIPLET)/
 
-ARCH_SOURCES=$(call rwildcard,$(ARCH_DIR),*.cpp)
-ARCH_SOURCES:=$(ARCH_SOURCES) $(call rwildcard,$(ARCH_DIR),*.s)
+# .cpp files
+CPP_SOURCE_FILES=$(call rwildcard,$(KERNEL_SOURCE_DIR),*.cpp)
+CPP_SOURCE_FILES:=$(CPP_SOURCE_FILES) $(call rwildcard,$(ARCH_SOURCE_DIR),*.cpp)
+
+# .s files
+ASM_SOURCE_FILES:=$(call rwildcard,$(ARCH_SOURCE_DIR),*.s)
 
 # Create .o files from sources
-KERNEL_OBJS=$(KERNEL_SOURCES:.cpp=.o)
-
-ARCH_OBJS=$(ARCH_SOURCES:.cpp=.o)
-ARCH_OBJS:=$(ARCH_OBJS) $(ARCH_SOURCES:.s=.o)
+# OBJECTS=$(notdir $(CPP_SOURCE_FILES:.cpp=.o)) $(notdir $(ASM_SOURCE_FILES:.s=.o))
+OBJECTS=$(CPP_SOURCE_FILES:.cpp=.o) $(ASM_SOURCE_FILES:.s=.o)
+OBJECTS:=$(addprefix $(OUT_DIR), $(OBJECTS))
 
 # Rules
 .PHONY: all run iso aeon clean
+.SILENT: clean
 
 all: aeon
 
@@ -45,20 +49,22 @@ iso: aeon
 
 	grub2-mkrescue -o $(OUT_DIR)/aeon.iso $(OUT_DIR)/isodir
 
-aeon: $(KERNEL_OBJS) $(ARCH_OBJS) $(ARCH_DIR)/linker.ld
-	$(CC) -T $(ARCH_DIR)linker.ld -o $(OUT_DIR)/$@.kernel $(CFLAGS) -nostdlib -lgcc $(call rwildcard,$(OUT_DIR),*.o)
+aeon: $(OBJECTS) $(ARCH_SOURCE_DIR)linker.ld
+	@echo "Linking aeon..."
+	$(CC) -T $(ARCH_SOURCE_DIR)linker.ld -o $(OUT_DIR)$@.kernel $(CFLAGS) -nostdlib -lgcc $(OBJECTS)
+	@echo "Done"
 
 clean:
 	rm -rf $(OUT_DIR)
 
 # Generic rule for code compilation
-$(ARCH_DIR)/crtbegin.o $(ARCH_DIR)/crtend.o:
+$(ARCH_DIR)crtbegin.o $(ARCH_DIR)crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
 
-%.o: %.cpp
-	mkdir -p $(dir $(OUT_DIR)$@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $(OUT_DIR)$@
+$(OUT_DIR)%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-%.o: %.s
-	mkdir -p $(dir $(OUT_DIR)$@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $(OUT_DIR)$@
+$(OUT_DIR)%.o: %.s
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@

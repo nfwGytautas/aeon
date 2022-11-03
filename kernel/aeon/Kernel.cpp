@@ -3,6 +3,7 @@
 
 /* Kernel main needs to use C linkage */
 extern "C" {
+
 /**
  * Entry function for aeon kernel
  */
