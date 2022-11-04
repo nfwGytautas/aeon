@@ -5,10 +5,17 @@
 extern "C" {
 
 /**
- * Entry function for aeon kernel
+ * @brief Early entry for aeon kernel (global constructors not setup yet)
  */
-void kernel_main() {
+void aeonEarlyMain() {
     aeon::Terminal::Initialize();
-    printf("Hello, World!\n");
+    printf("Early main\n");
+}
+
+/**
+ * @brief Entry function for aeon kernel
+ */
+void aeonMain() {
+    printf("Main");
 }
 }

@@ -22,13 +22,14 @@ ARCH_SOURCE_DIR=arch/$(ARCH_TRIPLET)/
 CPP_SOURCE_FILES=$(call rwildcard,$(KERNEL_SOURCE_DIR),*.cpp)
 CPP_SOURCE_FILES:=$(CPP_SOURCE_FILES) $(call rwildcard,$(ARCH_SOURCE_DIR),*.cpp)
 
-# .s files
-ASM_SOURCE_FILES:=$(call rwildcard,$(ARCH_SOURCE_DIR),*.s)
+# .s files (no wildcard here we want to be specific for assembly files)
+ASM_SOURCE_FILES:=$(ARCH_SOURCE_DIR)/boot.s
 
 # Create .o files from sources
-# OBJECTS=$(notdir $(CPP_SOURCE_FILES:.cpp=.o)) $(notdir $(ASM_SOURCE_FILES:.s=.o))
 OBJECTS=$(CPP_SOURCE_FILES:.cpp=.o) $(ASM_SOURCE_FILES:.s=.o)
 OBJECTS:=$(addprefix $(OUT_DIR), $(OBJECTS))
+
+OBJ_LINK_ORDER=$(OUT_DIR)crti.o $(OUT_DIR)crtbegin.o $(OBJECTS) $(OUT_DIR)crtend.o $(OUT_DIR)crtn.o
 
 # Rules
 .PHONY: all run iso aeon clean
@@ -49,18 +50,22 @@ iso: aeon
 
 	grub2-mkrescue -o $(OUT_DIR)/aeon.iso $(OUT_DIR)/isodir
 
-aeon: $(OBJECTS) $(ARCH_SOURCE_DIR)linker.ld
+aeon: crt $(OBJECTS) $(ARCH_SOURCE_DIR)linker.ld
 	@echo "Linking aeon..."
-	$(CC) -T $(ARCH_SOURCE_DIR)linker.ld -o $(OUT_DIR)$@.kernel $(CFLAGS) -nostdlib -lgcc $(OBJECTS)
+	$(CC) -T $(ARCH_SOURCE_DIR)linker.ld -o $(OUT_DIR)$@.kernel $(CFLAGS) -nostdlib -lgcc $(OBJ_LINK_ORDER)
 	@echo "Done"
+
+crt:
+	@mkdir -p $(OUT_DIR)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(ARCH_SOURCE_DIR)crti.s -o $(OUT_DIR)crti.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(ARCH_SOURCE_DIR)crtn.s -o $(OUT_DIR)crtn.o
+	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=crtbegin.o` && cp "$$OBJ" $(OUT_DIR)crtbegin.o
+	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=crtend.o` && cp "$$OBJ" $(OUT_DIR)crtend.o
 
 clean:
 	rm -rf $(OUT_DIR)
 
-# Generic rule for code compilation
-$(ARCH_DIR)crtbegin.o $(ARCH_DIR)crtend.o:
-	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
-
+# Generic rules for code compilation
 $(OUT_DIR)%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@

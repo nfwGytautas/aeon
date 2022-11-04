@@ -27,13 +27,16 @@ stack_top:
 .type _start, @function
 _start:
 	/* 32-bit protected mode from now on
-	 * Interrupts disabled 
+	 * Interrupts disabled
 	 * Paging disabled
 	 */
 
 	/* Setup stack for C++ kernel */
 	mov $stack_top, %esp
-	 
+
+    /* Before global constructors we have early entry for aeon */
+    call aeonEarlyMain
+
 	/* Initialize process state for the kernel, initialize C++ features here */
 	call _init /* Global constructors */
 
@@ -42,7 +45,7 @@ _start:
 	 * Paging enabled
 	 * NOTE: Entering the kernel requires the stack to be 16 byte alligned
 	 */
-  	call kernel_main
+  	call aeonMain
 
   	/* Kernel exit enter infinite loop */
   	cli /* Disable interrupts */

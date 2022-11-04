@@ -1,8 +1,8 @@
 #include <aeon/Terminal.h>
+#include <libc/string.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <libc/string.h>
 
 #include "VGA.h"
 
@@ -41,11 +41,37 @@ void terminal_putentryat(unsigned char c, uint8_t color, size_t x, size_t y) {
 
 void Terminal::PutChar(char c) {
     unsigned char uc = c;
-    terminal_putentryat(uc, terminal_color, terminal_column, terminal_row);
-    if (++terminal_column == VGA_WIDTH) {
+
+    if (c == '\n') {
+        terminal_row++;
         terminal_column = 0;
-        if (++terminal_row == VGA_HEIGHT)
-            terminal_row = 0;
+    } else {
+        terminal_putentryat(uc, terminal_color, terminal_column, terminal_row);
+        terminal_column++;
+
+        if (terminal_column == VGA_WIDTH) {
+            terminal_column = 0;
+            terminal_row++;
+        }
+    }
+
+    if (terminal_row == VGA_HEIGHT) {
+        // Scroll by 1 row
+        for (size_t i = 0; i < VGA_HEIGHT - 1; i++) {
+            for (size_t j = 0; j < VGA_WIDTH; j++) {
+                // Move every entry by WIDTH
+                terminal_buffer[i * VGA_WIDTH + j] = vga_entry(terminal_buffer[(i + 1) * VGA_WIDTH + j], terminal_color);
+            }
+        }
+
+        // Clear the last row
+        const size_t lastRowStartIdx = (VGA_HEIGHT - 1) * VGA_WIDTH;
+        for (size_t j = 0; j < VGA_WIDTH; j++) {
+            // Move every entry by WIDTH
+            terminal_buffer[lastRowStartIdx + j] = vga_entry(' ', terminal_color);
+        }
+
+        terminal_row--;
     }
 }
 
