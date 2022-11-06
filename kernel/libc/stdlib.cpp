@@ -10,7 +10,7 @@
 
 __attribute__((__noreturn__))
 void abort(void) {
-#if defined(__is_libk)
+#if defined(__AEON_LIBK)
     // TODO: Add proper kernel panic.
     printf("kernel: panic: abort()\n");
 #else

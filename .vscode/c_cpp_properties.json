@@ -1,0 +1,9 @@
+{
+    "configurations": [
+        {
+            "name": "Standard",
+            "includePath": ["${workspaceFolder}/kernel/include/"]
+        }
+    ],
+    "version": 4
+}

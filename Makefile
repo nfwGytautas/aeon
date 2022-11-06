@@ -9,7 +9,7 @@ CURRENT_DIR=$(shell pwd)
 OUT_DIR=$(CURRENT_DIR)/out/
 
 CC=${HOST}-gcc --sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR)
-CFLAGS=-g -O2 -ffreestanding -Wall -Wextra
+CFLAGS=-g -O2 -ffreestanding -Wall -Wextra -fstack-protector-all
 CPPFLAGS=-Ikernel/include -D__AEON_LIBK
 
 LD=${HOST}-ld
