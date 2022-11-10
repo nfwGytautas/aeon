@@ -1,58 +1,73 @@
-/* Multiboot header constants */
-.set ALIGN,		1<<0 				/* align loaded modules on page boundaries */
-.set MEMINFO,	1<<1 				/* provide memory map */
-.set FLAGS,    	ALIGN | MEMINFO 	/* Multiboot 'flag' field */
-.set MAGIC,		0x1BADB002			/* Magic number so that the bootloader can find the header */
-.set CHECKSUM,	-(MAGIC + FLAGS)	/* Cheksum of above constants */
+BITS 32
+ALIGN 4
 
+mboot:
+    ; Page allign loaded modules
+    MBOOT_PAGE_ALIGN    equ     1<<0
+    ; Provide memory information
+    MBOOT_MEMORY_INFO   equ     1<<1
 
-/* Mark program as a kernel */
-.section .multiboot
-.align 4
-.long MAGIC
-.long FLAGS
-.long CHECKSUM
+    ; Multiboot magic number
+    MBOOT_MAGIC         equ     0x1BADB002
 
+    ; Joint header flags
+    MBOOT_HEADER_FLAGS  equ     MBOOT_PAGE_ALIGN | MBOOT_MEMORY_INFO
 
-/* Create the stack for the kernel, the current stack size is 16KB (needs to be 16-byte aligned) */
-.section .bss
-.align 16
-stack_bottom:
-.skip 16384 # 16 KiB
-stack_top:
+    ; Checksum
+    MBOOT_CHECKSUM      equ     -(MBOOT_MAGIC + MBOOT_HEADER_FLAGS)
 
-/* Entry point into kernel from bootloader */
-.section .text
-.global _start
-.type _start, @function
+    ; Create memory are
+    dd MBOOT_MAGIC
+    dd MBOOT_HEADER_FLAGS
+    dd MBOOT_CHECKSUM
+
+; Entry point into kernel from bootloader
+global _start
 _start:
-	/* 32-bit protected mode from now on
-	 * Interrupts disabled
-	 * Paging disabled
-	 */
+    ; Setup stack for C++ kernel
+	mov esp, 0x7FFFF
+    push esp
 
-	/* Setup stack for C++ kernel */
-	mov $stack_top, %esp
+    ; Multiboot headers
+    push eax ; Header magic number
+    push ebx ; Header pointer
 
-    /* Before global constructors we have early entry for aeon */
-    call aeonEarlyMain
+    ; Disable interrupts
+    cli
 
-	/* Initialize process state for the kernel, initialize C++ features here */
-	call _init /* Global constructors */
+	; Initialize process state for the kernel, initialize C++ features here
+    extern _init
+	call _init
 
-	/* Environment initialized
-	 * GDT loaded
-	 * Paging enabled
-	 * NOTE: Entering the kernel requires the stack to be 16 byte alligned
-	 */
+	; Enter the C++ kernel
+	; NOTE: Entering the kernel requires the stack to be 16 byte alligned
+    extern aeonMain
   	call aeonMain
 
-  	/* Kernel exit enter infinite loop */
-  	cli /* Disable interrupts */
+  	; Kernel exit enter infinite loop
+    jmp $
 
-  	/* Wait for interrupt and loop if it happens */
-1:	hlt
-	jmp 1b
 
-/* For debugging the _start symbol is set to the current location */
-.size _start, . - _start
+
+global __gdt_flush
+extern __gdt_ptr
+__gdt_flush:
+    ; Load __gdt_ptr into the register
+    lgdt [__gdt_ptr]
+    ; Reload data segment values
+    JMP 0x08:.reload_CS
+    ret
+
+.reload_CS:
+    mov ax, 0x10
+    mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov ss, ax
+    ret
+
+
+; BSS
+SECTION .bss
+    resb 8192 ; 8KB memory

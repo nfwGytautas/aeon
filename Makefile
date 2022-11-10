@@ -9,8 +9,11 @@ CURRENT_DIR=$(shell pwd)
 OUT_DIR=$(CURRENT_DIR)/out/
 
 CC=${HOST}-gcc --sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR)
+ASM=yasm
+
 CFLAGS=-g -O2 -ffreestanding -Wall -Wextra -fstack-protector-all
 CPPFLAGS=-Ikernel/include -D__AEON_LIBK
+ASMFLAGS=-f elf
 
 LD=${HOST}-ld
 
@@ -23,7 +26,7 @@ CPP_SOURCE_FILES=$(call rwildcard,$(KERNEL_SOURCE_DIR),*.cpp)
 CPP_SOURCE_FILES:=$(CPP_SOURCE_FILES) $(call rwildcard,$(ARCH_SOURCE_DIR),*.cpp)
 
 # .s files (no wildcard here we want to be specific for assembly files)
-ASM_SOURCE_FILES:=$(ARCH_SOURCE_DIR)/boot.s
+ASM_SOURCE_FILES:=$(ARCH_SOURCE_DIR)boot.s
 
 # Create .o files from sources
 OBJECTS=$(CPP_SOURCE_FILES:.cpp=.o) $(ASM_SOURCE_FILES:.s=.o)
@@ -72,4 +75,4 @@ $(OUT_DIR)%.o: %.cpp
 
 $(OUT_DIR)%.o: %.s
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(ASM) $(ASMFLAGS) -c $< -o $@

@@ -1,21 +1,21 @@
 #include <aeon/Terminal.h>
+#include <aeon/boot/GDT.h>
 #include <libc/stdio.h>
+
+extern int setupArch();
 
 /* Kernel main needs to use C linkage */
 extern "C" {
 
 /**
- * @brief Early entry for aeon kernel (global constructors not setup yet)
- */
-void aeonEarlyMain() {
-    aeon::Terminal::Initialize();
-    printf("Early main\n");
-}
-
-/**
  * @brief Entry function for aeon kernel
  */
 void aeonMain() {
+    aeon::Terminal::Initialize();
+
+    aeon::InitializeGDT();
+
     printf("Main");
 }
+
 }
